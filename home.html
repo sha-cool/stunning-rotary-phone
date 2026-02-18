@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="home-body">
+
+<div class="layout">
+
+    <div class="sidebar">
+        <h2 class="logo">Home</h2>
+        <ul class="menu">
+            <li>Dashboard</li>
+            <li>Account Management</li>
+            <li>Login History</li>
+            <li>User Profile</li>
+            <li onclick="logout()">Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+
+        <div class="status-banner">
+            <h2>Security Status</h2>
+            <p id="statusText">Checking...</p>
+        </div>
+
+        <div class="summary-cards">
+            <div class="card">
+                <h3 id="totalLogins">0</h3>
+                <p>Total Logins</p>
+            </div>
+
+            <div class="card">
+                <h3 id="failedLogins">0</h3>
+                <p>Failed Attempts</p>
+            </div>
+
+            <div class="card">
+                <h3 id="uniqueIPs">0</h3>
+                <p>Unique IPs</p>
+            </div>
+        </div>
+
+        <div class="activity-section">
+            <h3>Recent Activity</h3>
+            <ul id="activityList"></ul>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+async function loadDashboard() {
+    const response = await fetch("/api/logins");
+
+    if (!response.ok) {
+        window.location.href = "/index.html";
+        return;
+    }
+
+    const data = await response.json();
+
+    const total = data.length;
+    const failed = data.filter(a => a.status === "FAILED").length;
+    const uniqueIPs = new Set(data.map(a => a.ip)).size;
+
+    document.getElementById("totalLogins").textContent = total;
+    document.getElementById("failedLogins").textContent = failed;
+    document.getElementById("uniqueIPs").textContent = uniqueIPs;
+
+    const activityList = document.getElementById("activityList");
+    activityList.innerHTML = "";
+
+    data.slice().reverse().forEach(attempt => {
+        const li = document.createElement("li");
+        li.textContent = `${attempt.email} - ${attempt.status} - ${new Date(attempt.time).toLocaleString()}`;
+        activityList.appendChild(li);
+    });
+
+    const statusText = document.getElementById("statusText");
+
+    if (failed >= 3) {
+        statusText.textContent = "Multiple failed login attempts detected.";
+        statusText.style.color = "#f87171";
+    } else {
+        statusText.textContent = "System operating normally.";
+        statusText.style.color = "#22c55e";
+    }
+}
+
+function logout() {
+    window.location.href = "/logout";
+}
+
+loadDashboard();
+</script>
+
+</body>
+</html>
