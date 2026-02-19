@@ -6,7 +6,10 @@ const session = require("express-session");
 const app = express();
 const PORT = 3000;
 
-// Middleware
+/* =========================
+   MIDDLEWARE
+========================= */
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -14,26 +17,47 @@ app.use(session({
     secret: "supersecretkey",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }
+    cookie: { secure: false } // set true if using HTTPS
 }));
 
-// Temporary test user
-const user = {
-    email: "admin@example.com",
-    passwordHash: bcrypt.hashSync("1234", 10)
-};
+/* =========================
+   USERS (Temporary In-Memory)
+========================= */
 
-// Store login attempts
+const users = [
+    {
+        email: "admin@example.com",
+        passwordHash: bcrypt.hashSync("1234", 10)
+    },
+    {
+        email: "user@example.com",
+        passwordHash: bcrypt.hashSync("5678", 10)
+    },
+    {
+        email:"shahulhameeddarvesh@gmail.com",
+        passwordHash:bcrypt.hashSync("2218", 10)
+    }
+];
+
+/* =========================
+   LOGIN HISTORY STORAGE
+========================= */
+
 const loginHistory = [];
 
-// Login route
+/* =========================
+   LOGIN ROUTE
+========================= */
+
 app.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     let match = false;
 
-    if (email === user.email) {
-        match = await bcrypt.compare(password, user.passwordHash);
+    const foundUser = users.find(u => u.email === email);
+
+    if (foundUser) {
+        match = await bcrypt.compare(password, foundUser.passwordHash);
     }
 
     const attempt = {
@@ -45,9 +69,9 @@ app.post("/login", async (req, res) => {
 
     loginHistory.push(attempt);
 
-    // Risk detection
+    // Risk detection: 3 failed attempts
     const failedAttempts = loginHistory.filter(
-        attempt => attempt.email === email && attempt.status === "FAILED"
+        a => a.email === email && a.status === "FAILED"
     );
 
     if (failedAttempts.length >= 3) {
@@ -62,7 +86,10 @@ app.post("/login", async (req, res) => {
     res.redirect("/home");
 });
 
-// Protected home route
+/* =========================
+   PROTECTED HOME ROUTE
+========================= */
+
 app.get("/home", (req, res) => {
     if (!req.session.user) {
         return res.redirect("/index.html");
@@ -71,7 +98,10 @@ app.get("/home", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "home.html"));
 });
 
-// API route to fetch login history
+/* =========================
+   API: LOGIN HISTORY
+========================= */
+
 app.get("/api/logins", (req, res) => {
     if (!req.session.user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -80,12 +110,19 @@ app.get("/api/logins", (req, res) => {
     res.json(loginHistory);
 });
 
-// Logout
+/* =========================
+   LOGOUT
+========================= */
+
 app.get("/logout", (req, res) => {
     req.session.destroy(() => {
         res.redirect("/index.html");
     });
 });
+
+/* =========================
+   START SERVER
+========================= */
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
